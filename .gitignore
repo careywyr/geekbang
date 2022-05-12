@@ -1,4 +1,6 @@
 week1/.idea/
 week1/*.iml
 week1/out/
+**/.idea/
+**/target/
 homework2.0/jvm/target/
