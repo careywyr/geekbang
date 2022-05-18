@@ -1,0 +1,3 @@
+- 集成HttpClient在GatewayHandler
+- 过滤器为RequestFilter，如果请求路径为/test则返回403
+- 路由为随机路由，代码也在GatewayHandler里面，跟示例代码一样
