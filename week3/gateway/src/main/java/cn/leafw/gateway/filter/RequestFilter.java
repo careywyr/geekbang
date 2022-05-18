@@ -1,12 +1,10 @@
 package cn.leafw.gateway.filter;
 
 import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
 
 import java.nio.channels.SocketChannel;
@@ -28,8 +26,7 @@ public class RequestFilter extends SimpleChannelInboundHandler<FullHttpRequest> 
         System.out.println("走到过滤器了: " + fullHttpRequest.uri());
         if (fullHttpRequest.uri().contains("/test")) {
             FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, HttpResponseStatus.FORBIDDEN);
-            channelHandlerContext.writeAndFlush(response);
-            channelHandlerContext.close();
+            channelHandlerContext.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
             return;
         }
         fullHttpRequest.headers().set("leafw", "abc");
