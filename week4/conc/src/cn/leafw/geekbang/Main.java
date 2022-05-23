@@ -1,6 +1,12 @@
 package cn.leafw.geekbang;
 
+import cn.leafw.geekbang.others.ConditionClass;
+import cn.leafw.geekbang.others.CycClass;
+import cn.leafw.geekbang.others.WaitClass;
+
 import java.util.concurrent.*;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 思考有多少种方式，在 main 函数启动一个新线程，运行一个方法，拿到这个方法的返回值后，退出主线程?
@@ -22,7 +28,7 @@ public class Main {
         // 异步执行 下面方法
 
         //这是得到的返回值 24157817
-        int result = method1();
+        int result = method12();
 
 
         // 确保  拿到result 并输出
@@ -165,57 +171,26 @@ public class Main {
         return waitClass.getSum();
     }
 
-
-
-    // ------------------------------------------------------------分割线------------------------------------------------------
-
     /**
-     * method11 用的
+     * 12. Lock/Condition
      */
-    static class WaitClass extends Thread{
-
-        private int sum;
-
-        public synchronized void doSum() {
-            sum = Function.sum();
-            notify();
+    private static int method12() throws InterruptedException {
+        ReentrantLock lock = new ReentrantLock();
+        Condition condition = lock.newCondition();
+        ConditionClass conditionClass = new ConditionClass(lock, condition);
+        conditionClass.start();
+        lock.lock();
+        try {
+            condition.await();
+        } finally {
+            lock.unlock();
         }
+        return conditionClass.getSum();
 
-        public int getSum() {
-            return sum;
-        }
-
-        @Override
-        public void run() {
-            doSum();
-        }
     }
 
-    /**
-     * method9 用的
-     */
-    static class CycClass implements Runnable{
-        private final CyclicBarrier cyclicBarrier;
-        protected int a;
-        public CycClass(CyclicBarrier cyclicBarrier) {
-            this.cyclicBarrier = cyclicBarrier;
-        }
 
 
-        @Override
-        public void run() {
-            a = Function.sum();
-            try {
-                cyclicBarrier.await();
-            } catch (InterruptedException | BrokenBarrierException e) {
-                e.printStackTrace();
-            }
-        }
-
-        public int getA() {
-            return this.a;
-        }
-    }
 
 
 }
