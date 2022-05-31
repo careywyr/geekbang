@@ -1,0 +1,23 @@
+leafw:
+  school:
+    name: 极客小学
+    classes:
+      - klassId: 1
+        klassName: 一班
+        students:
+          - id: 1001
+            name: 张三
+          - id: 1002
+            name: 李四
+
+      - klassId: 2
+        klassName: 二班
+        students:
+          - id: 2001
+            name: 王五
+
+      - klassId: 3
+        klassName: 三班
+        students:
+          - id: 3001
+            name: 阿巴阿巴

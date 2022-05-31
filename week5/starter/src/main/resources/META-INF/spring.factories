@@ -1,0 +1,3 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  cn.leafw.spring.starter.SchoolConfiguration, \
+  cn.leafw.spring.starter.KlassConfiguration
