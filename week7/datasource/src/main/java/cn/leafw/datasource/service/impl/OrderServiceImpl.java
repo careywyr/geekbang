@@ -33,6 +33,13 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         return this.baseMapper.selectById(id);
     }
 
+    @Override
+    public Long insertMaster() {
+        Order order = generateEntity();
+        save(order);
+        return order.getOrderId();
+    }
+
     private Order generateEntity() {
         Order order = new Order();
         order.setUserId(1L);

@@ -36,6 +36,16 @@ public class OrderController {
      */
     @GetMapping("/{id}")
     public String query(@PathVariable Long id) {
+        return check(id);
+    }
+
+    @GetMapping("/test")
+    public String writeRead() {
+        Long orderId = orderService.insertMaster();
+        return check(orderId);
+    }
+
+    private String check(Long id) {
         Order master = orderService.queryMaster(id);
         Order slave = orderService.querySlave(id);
         return "查询master" + (master != null ? "存在;" : "不存在;") +
