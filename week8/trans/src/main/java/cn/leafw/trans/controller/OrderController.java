@@ -25,18 +25,30 @@ public class OrderController {
     private IOrderService orderService;
 
 
+    /**
+     * 有事务，全部成功
+     * @return
+     */
     @GetMapping("/succ")
     public String succ() {
         orderService.success();
         return "succ";
     }
 
+    /**
+     * 有事务，全部失败
+     * @return
+     */
     @GetMapping("/fail")
     public String fail() {
         orderService.fail();
         return "fail";
     }
 
+    /**
+     * 无事务，部分成功
+     * @return
+     */
     @GetMapping("/notrans")
     public String notrans() {
         orderService.noTrans();
