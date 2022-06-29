@@ -1,0 +1,31 @@
+server:
+  port: 8080
+dubbo:
+  # ??????
+  application:
+    name: bank
+    # ??QOS???????????????
+    qos-enable: false
+    qos-accept-foreign-ip: false
+  # ??????
+  registry:
+    address: nacos://127.0.0.1:8848
+  # ????-???????????????
+  protocol:
+    name: dubbo
+    port: 20880
+spring:
+  main:
+    # ??Bean??????
+    allow-bean-definition-overriding: true
+  datasource:
+    dba:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      jdbc-url: jdbc:mysql://localhost:3306/geekbang?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+      username: root
+      password: 123456
+    dbb:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      jdbc-url: jdbc:mysql://localhost:3306/geekbang2?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+      username: root
+      password: 123456
