@@ -1,10 +1,12 @@
 package io.kimmking.rpcfx.client;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import io.kimmking.rpcfx.api.RpcfxRequest;
 import io.kimmking.rpcfx.api.RpcfxResponse;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandler;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
@@ -13,6 +15,7 @@ import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.URI;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * netty客户端处理服务端返回的数据
@@ -21,32 +24,33 @@ import java.net.URI;
  * @date 2022/6/29
  */
 @Slf4j
-public class ClientHandler extends SimpleChannelInboundHandler<RpcfxResponse> {
+public class ClientHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
 
     private RpcfxResponse rpcfxResponse;
+
+    private CountDownLatch countDownLatch;
+
+    public void setCountDownLatch(CountDownLatch countDownLatch) {
+        this.countDownLatch = countDownLatch;
+    }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         log.info("==========channel active==========");
-//        FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_0, HttpMethod.POST, "");
-//        request.headers().add(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
-//        request.headers().add(HttpHeaderNames.CONTENT_LENGTH,request.content().readableBytes());
-//        request.headers().add(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON);
-//        ctx.writeAndFlush(request);
         super.channelActive(ctx);
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext channelHandlerContext, RpcfxResponse response) throws Exception {
-        try {
-            // 将 RpcResponse字符串 反序列化成 RpcResponse对象
-            log.info("Netty client serializer : " + response.toString());
-            rpcfxResponse = response;
-        } finally{
-            // 必须释放msg数据
-            ReferenceCountUtil.release(response);
+    protected void channelRead0(ChannelHandlerContext channelHandlerContext, FullHttpResponse response) throws Exception {
+        log.info("channelRead0");
+        ByteBuf content = response.content();
+        int len = content.readableBytes();
+        byte[] arr = new byte[len];
+        content.getBytes(0, arr);
+        this.rpcfxResponse = JSON.parseObject(new String(arr, CharsetUtil.UTF_8), RpcfxResponse.class);
+        log.info("服务端返回数据: {}", new String(arr, CharsetUtil.UTF_8));
+        countDownLatch.countDown();
 
-        }
     }
 
     @Override

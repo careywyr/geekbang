@@ -3,6 +3,8 @@ package io.kimmking.rpcfx.client;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.http.HttpClientCodec;
+import io.netty.handler.codec.http.HttpObjectAggregator;
 
 /**
  * TODO
@@ -13,9 +15,9 @@ import io.netty.channel.socket.SocketChannel;
 public class RpcClientInitializer extends ChannelInitializer<SocketChannel> {
     @Override
     protected void initChannel(SocketChannel socketChannel) throws Exception {
-        ChannelPipeline pipeline = socketChannel.pipeline();
-        pipeline.addLast(new JsonEncoder());
-        pipeline.addLast("clientHandler", new ClientHandler());
+        socketChannel.pipeline().addLast(new HttpClientCodec());
+        socketChannel.pipeline().addLast(new HttpObjectAggregator(512 * 1024));
+
     }
 }
 

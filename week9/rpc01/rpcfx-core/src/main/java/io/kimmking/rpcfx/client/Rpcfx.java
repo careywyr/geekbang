@@ -2,15 +2,13 @@ package io.kimmking.rpcfx.client;
 
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.parser.ParserConfig;
 import io.kimmking.rpcfx.api.*;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -32,9 +30,10 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 public final class Rpcfx {
@@ -43,6 +42,8 @@ public final class Rpcfx {
     static {
         ParserConfig.getGlobalInstance().addAccept("io.kimmking");
     }
+
+    private static final AtomicInteger count = new AtomicInteger(0);
 
     public static <T, filters> T createFromRegistry(final Class<T> serviceClass, final String zkUrl, Router router, LoadBalancer loadBalance, Filter filter) {
 
@@ -68,6 +69,7 @@ public final class Rpcfx {
         Enhancer enhancer = new Enhancer();
         enhancer.setCallback(new RpcfxInvocationHandler(serviceClass, url));
         enhancer.setSuperclass(serviceClass);
+        log.info("enhancer create");
         return (T) enhancer.create();
 
     }
@@ -105,19 +107,23 @@ public final class Rpcfx {
         private Object doReq(Object proxy, Method method, Object[] params) throws Exception {
             // 加filter地方之二
             // mock == true, new Student("hubao");
+            // 这里不知道为什么会自己调用一次toString和finalize方法
+            if (method.getName().equals("toString") || method.getName().equals("finalize")) {
+                return null;
+            }
 
             RpcfxRequest request = new RpcfxRequest();
             request.setServiceClass(this.serviceClass.getName());
             request.setMethod(method.getName());
             request.setParams(params);
 
-            if (null!=filters) {
-                for (Filter filter : filters) {
-                    if (!filter.filter(request)) {
-                        return null;
-                    }
-                }
-            }
+//            if (null!=filters) {
+//                for (Filter filter : filters) {
+//                    if (!filter.filter(request)) {
+//                        return null;
+//                    }
+//                }
+//            }
 
 //            RpcfxResponse response = post(request, url);
             RpcfxResponse response = nettyClientPost(request, url);
@@ -129,12 +135,12 @@ public final class Rpcfx {
             // 考虑封装一个全局的RpcfxException
 
 //            return JSON.parse(response.getResult().toString());
-            return null;
+            return JSON.parse(response.getResult().toString());
         }
 
         private RpcfxResponse post(RpcfxRequest req, String url) throws IOException {
             String reqJson = JSON.toJSONString(req);
-            System.out.println("req json: "+reqJson);
+//            System.out.println("req json: "+reqJson);
 
             // 1.可以复用client
             // 2.尝试使用httpclient或者netty client
@@ -150,26 +156,52 @@ public final class Rpcfx {
 
         private RpcfxResponse nettyClientPost(RpcfxRequest req, String url) throws Exception{
             String reqJson = JSON.toJSONString(req);
-            System.out.println("req json: "+reqJson);
-            EventLoopGroup bossGroup = new NioEventLoopGroup();
+           log.info("req json: "+reqJson);
+            EventLoopGroup bossGroup = new NioEventLoopGroup(1);
 
             Bootstrap bs = new Bootstrap();
 
             bs.group(bossGroup)
                     .channel(NioSocketChannel.class)
+                    .option(ChannelOption.SO_REUSEADDR, true)
                     .option(ChannelOption.SO_KEEPALIVE, true)
+                    .option(ChannelOption.AUTO_CLOSE, true)
                     .option(ChannelOption.TCP_NODELAY, true)
                     .handler(new RpcClientInitializer());
 
+
             // 客户端开启
             ChannelFuture cf = bs.connect("127.0.0.1", 8080).sync();
-            ClientHandler clientHandler = new ClientHandler();
-            cf.channel().pipeline().replace("clientHandler", "clientHandler", clientHandler);
-            // 发送客户端的请求
-            cf.channel().writeAndFlush(req);
+            if (count.get() > 0) {
+                return null;
+            }
+            Channel channel = cf.channel();
 
-            // 等待直到连接中断
-            cf.channel().closeFuture().sync();
+
+            FullHttpRequest request = new DefaultFullHttpRequest(
+                    HttpVersion.HTTP_1_1, HttpMethod.POST, "/");
+            request.headers().set(HttpHeaderNames.HOST, "127.0.0.1");
+            request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaders.Values.KEEP_ALIVE); // or HttpHeaders.Values.CLOSE
+            request.headers().set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaders.Values.GZIP);
+            request.headers().add(HttpHeaderNames.CONTENT_TYPE, "application/json");
+            ByteBuf bbuf = Unpooled.copiedBuffer(JSON.toJSONString(req), StandardCharsets.UTF_8);
+            request.headers().set(HttpHeaderNames.CONTENT_LENGTH, bbuf.readableBytes());
+            request.content().clear().writeBytes(bbuf);
+
+            // 发送客户端的请求
+            ClientHandler clientHandler = new ClientHandler();
+            CountDownLatch countDownLatch = new CountDownLatch(1);
+            clientHandler.setCountDownLatch(countDownLatch);
+            channel.pipeline().addLast("clientHandler", clientHandler);
+
+            channel.writeAndFlush(request).sync();
+            try {
+                countDownLatch.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            count.incrementAndGet();
+            log.info("rpcfxResponse = {} ", JSONObject.toJSONString(clientHandler.getRpcfxResponse()));
             return clientHandler.getRpcfxResponse();
         }
 

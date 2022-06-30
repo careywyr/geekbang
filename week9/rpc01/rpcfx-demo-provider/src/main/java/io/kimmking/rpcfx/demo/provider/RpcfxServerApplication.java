@@ -76,8 +76,10 @@ public class RpcfxServerApplication {
 
 	@PostMapping("/")
 	public RpcfxResponse invoke(@RequestBody RpcfxRequest request) {
-		log.info("receive request");
-		return invoker.invoke(request);
+		log.info("receive request {}", JSON.toJSONString(request));
+		RpcfxResponse invoke = invoker.invoke(request);
+		log.info("server return {}", JSON.toJSONString(invoke));
+		return invoke;
 	}
 
 	@Bean
